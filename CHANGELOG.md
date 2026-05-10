@@ -4,6 +4,16 @@
 
 ---
 
+## [9.37.2] - 2026-05-10
+
+### Fixed
+
+- Migrate all 53 skill paths in `plugin.json` from `.claude/skills/*.md` flat files to `./skills/*/` directory format, fixing skill loading failures (#366, #367).
+- Fix `claude-mem-bridge.sh` port discovery: read from `~/.claude-mem/settings.json`, fall back to UID-based formula (`37700 + uid%100`) on Linux/macOS, keep `37777` for Windows Git Bash (#363).
+- Update `test-docs-sync.sh` and `test-debate-skill.sh` to validate directory-based skill registration.
+
+---
+
 ## [9.37.1] - 2026-05-08
 
 ### Fixed
