@@ -12,22 +12,21 @@ Manage the Claude Octopus scheduled workflow runner daemon.
 ## Usage
 
 
-**Step 0 — Ensure plugin root is resolvable (run via Bash tool FIRST):**
+**Preflight — Ensure plugin root is resolvable (run via Bash tool FIRST):**
 
 ```bash
 OCTO_ROOT="${HOME}/.claude-octopus/plugin"
 if [[ ! -x "$OCTO_ROOT/scripts/orchestrate.sh" ]]; then
-  cache="$(find "${HOME}/.claude/plugins/cache" "${HOME}/Library/Application Support/Claude" -maxdepth 8 -path "*/nyldn-plugins/octo/*/scripts/orchestrate.sh" -print -quit 2>/dev/null)"
-  if [[ -n "$cache" ]]; then
-    plugin_dir="$(cd "$(dirname "$(dirname "$cache")")" && pwd -P)"
-    mkdir -p "${HOME}/.claude-octopus"
-    ln -sfn "$plugin_dir" "$OCTO_ROOT"
+  helper="$OCTO_ROOT/scripts/helpers/ensure-plugin-root.sh"
+  if [[ ! -x "$helper" ]]; then
+    helper="$(find "${HOME}/.claude/plugins/cache" "${HOME}/Library/Application Support/Claude" "${LOCALAPPDATA:-/dev/null}/Claude" "${XDG_DATA_HOME:-${HOME}/.local/share}/Claude" -maxdepth 8 -path "*/nyldn-plugins/octo/*/scripts/helpers/ensure-plugin-root.sh" -print -quit 2>/dev/null)"
   fi
+  [[ -x "$helper" ]] && bash "$helper" >/dev/null 2>&1 || true
 fi
 test -x "$OCTO_ROOT/scripts/orchestrate.sh" && echo "plugin-root:ok" || echo "plugin-root:missing"
 ```
 
-If the output is `plugin-root:missing`, stop and tell the user to run `/octo:setup`.
+If the output is `plugin-root:missing`, stop and ask the user to run `/octo:setup`.
 
 
 ```bash

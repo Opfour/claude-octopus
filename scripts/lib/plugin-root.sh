@@ -47,7 +47,7 @@ octo_discover_plugin_root() {
     # Strategy 1: CC marketplace cache (standard install path)
     local cache_base="${HOME}/.claude/plugins/cache/nyldn-plugins/octo"
     if [[ -d "$cache_base" ]]; then
-        candidate="$(ls -1d "$cache_base"/*/ 2>/dev/null | sort -V | tail -1)"
+        candidate="$(ls -1dt "$cache_base"/*/ 2>/dev/null | head -1)"
         candidate="${candidate%/}"
         if [[ -n "$candidate" && -f "${candidate}/scripts/orchestrate.sh" ]]; then
             printf '%s' "$candidate"

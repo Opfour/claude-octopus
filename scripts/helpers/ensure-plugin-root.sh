@@ -13,6 +13,12 @@
 set -eo pipefail
 
 STABLE_ROOT="${HOME}/.claude-octopus/plugin"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+PLUGIN_ROOT_LIB="${SCRIPT_DIR}/../lib/plugin-root.sh"
+
+if [[ -f "$PLUGIN_ROOT_LIB" ]]; then
+    source "$PLUGIN_ROOT_LIB"
+fi
 
 # Fast path — already exists and points to a valid directory
 if [[ -d "$STABLE_ROOT" && -x "$STABLE_ROOT/scripts/orchestrate.sh" ]]; then
@@ -29,38 +35,15 @@ fi
 
 # Strategy 2: Relative to this script (works when script is inside the plugin tree)
 if [[ -z "$PLUGIN_ROOT" ]]; then
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
     candidate="$(dirname "$(dirname "$SCRIPT_DIR")")"
     if [[ -f "$candidate/scripts/orchestrate.sh" ]]; then
         PLUGIN_ROOT="$candidate"
     fi
 fi
 
-# Strategy 3: CC marketplace cache — find the latest installed version
-if [[ -z "$PLUGIN_ROOT" ]]; then
-    cache_base="${HOME}/.claude/plugins/cache/nyldn-plugins/octo"
-    if [[ -d "$cache_base" ]]; then
-        latest="$(ls -1d "$cache_base"/*/ 2>/dev/null | sort -V | tail -1)"
-        if [[ -n "$latest" && -f "${latest}scripts/orchestrate.sh" ]]; then
-            PLUGIN_ROOT="${latest%/}"
-        fi
-    fi
-fi
-
-# Strategy 4: Cowork / desktop-app plugin cache
-if [[ -z "$PLUGIN_ROOT" ]]; then
-    for search_root in \
-        "${HOME}/Library/Application Support/Claude" \
-        "${LOCALAPPDATA:-/dev/null}/Claude" \
-        "${XDG_DATA_HOME:-${HOME}/.local/share}/Claude"; do
-        if [[ -d "$search_root" ]]; then
-            found="$(find "$search_root" -maxdepth 8 -path "*/nyldn-plugins/octo/*/scripts/orchestrate.sh" -print -quit 2>/dev/null)"
-            if [[ -n "$found" ]]; then
-                PLUGIN_ROOT="$(cd "$(dirname "$(dirname "$found")")" && pwd -P)"
-                break
-            fi
-        fi
-    done
+# Strategy 3: Shared marketplace/cache discovery
+if [[ -z "$PLUGIN_ROOT" ]] && declare -f octo_discover_plugin_root >/dev/null 2>&1; then
+    PLUGIN_ROOT="$(octo_discover_plugin_root)" || true
 fi
 
 if [[ -z "$PLUGIN_ROOT" ]]; then
@@ -75,10 +58,11 @@ PLUGIN_ROOT="$(cd "$PLUGIN_ROOT" && pwd -P)"
 if [[ -f "$PLUGIN_ROOT/scripts/lib/plugin-root.sh" ]]; then
     source "$PLUGIN_ROOT/scripts/lib/plugin-root.sh"
     if declare -f octo_ensure_stable_plugin_root >/dev/null 2>&1; then
-        octo_ensure_stable_plugin_root "$PLUGIN_ROOT" >/dev/null 2>&1
+        helper_output="$(octo_ensure_stable_plugin_root "$PLUGIN_ROOT" 2>&1)" && helper_status=0 || helper_status=$?
         if [[ -d "$STABLE_ROOT" && -x "$STABLE_ROOT/scripts/orchestrate.sh" ]]; then
             exit 0
         fi
+        echo "warning: octo_ensure_stable_plugin_root did not create a valid stable root (exit=$helper_status): ${helper_output:-no output}" >&2
     fi
 fi
 
