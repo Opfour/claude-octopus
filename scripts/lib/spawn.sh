@@ -887,8 +887,11 @@ ${heuristic_ctx}"
         local _done_dir="${WORKSPACE_DIR:-${HOME}/.claude-octopus}/.octo/agents"
         local _done_tmp="${_done_dir}/${task_id}.done.tmp.$$"
         local _done_file="${_done_dir}/${task_id}.done"
-        mkdir -p "$_done_dir" 2>/dev/null || true
-        echo "$_spawn_exit" > "$_done_tmp" && mv -f "$_done_tmp" "$_done_file" 2>/dev/null || true
+        if ! mkdir -p "$_done_dir" 2>/dev/null \
+           || ! { echo "$_spawn_exit" > "$_done_tmp" && mv -f "$_done_tmp" "$_done_file"; } 2>/dev/null; then
+            log WARN "Failed to write completion marker for $task_id (exit=$_spawn_exit)"
+            rm -f "$_done_tmp" 2>/dev/null || true
+        fi
 
         # v8.19.0: Cleanup heartbeat (self-terminating monitor handles this too)
         cleanup_heartbeat "$$" 2>/dev/null || true

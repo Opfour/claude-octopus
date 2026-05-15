@@ -912,6 +912,10 @@ Output as numbered list with [CODING] or [REASONING] prefix for each subtask."
         local task_id="tangle-${task_group}-${subtask_num}"
         local pane_title="$pane_icon Subtask $((subtask_num+1))"
 
+        # Tangle currently routes only CLI-backed codex/gemini workers. Its
+        # completion watcher relies on .done markers written by the legacy
+        # spawn path; add equivalent hook markers before routing Claude Agent
+        # Teams into this loop.
         if [[ "$TMUX_MODE" == "true" ]]; then
             # Use async+tmux spawning
             local pid
@@ -933,7 +937,9 @@ Output as numbered list with [CODING] or [REASONING] prefix for each subtask."
     # Wait with progress monitoring — poll .done marker files written by spawn_agent
     # rather than kill -0 $pid (which tracks wrapper PID, not provider PID)
     local _done_dir="${WORKSPACE_DIR:-${HOME}/.claude-octopus}/.octo/agents"
-    local _deadline=$(( $(date +%s) + ${OCTOPUS_TANGLE_DEADLINE:-600} ))
+    local _tangle_max_wait="${OCTOPUS_TANGLE_DEADLINE:-$(( ${TIMEOUT:-600} + 60 ))}"
+    [[ "$_tangle_max_wait" =~ ^[0-9]+$ ]] || _tangle_max_wait=$(( ${TIMEOUT:-600} + 60 ))
+    local _deadline=$(( $(date +%s) + _tangle_max_wait ))
     local completed=0
     local _failed_tasks=()
     while [[ $completed -lt ${#task_ids[@]} ]]; do
@@ -944,10 +950,18 @@ Output as numbered list with [CODING] or [REASONING] prefix for each subtask."
                 ((completed++)) || true
             elif (( $(date +%s) > _deadline )); then
                 log WARN "Thread ${task_ids[$i]} deadline exceeded — killing and marking timeout"
-                # Kill wrapper PID if still alive (best-effort)
                 local _wrapper_pid="${pids[$i]:-}"
-                [[ -n "$_wrapper_pid" ]] && kill "$_wrapper_pid" 2>/dev/null || true
-                echo "timeout" > "$_done_file" 2>/dev/null || true
+                if [[ -n "$_wrapper_pid" ]]; then
+                    pkill -TERM -P "$_wrapper_pid" 2>/dev/null || true
+                    kill -TERM "$_wrapper_pid" 2>/dev/null || true
+                    sleep 1
+                    pkill -KILL -P "$_wrapper_pid" 2>/dev/null || true
+                    kill -KILL "$_wrapper_pid" 2>/dev/null || true
+                fi
+                mkdir -p "$_done_dir" 2>/dev/null || true
+                if [[ ! -f "$_done_file" ]] && ! echo "timeout" > "$_done_file" 2>/dev/null; then
+                    log WARN "Failed to write timeout marker for ${task_ids[$i]} at $_done_file"
+                fi
             fi
         done
         echo -ne "\r${CYAN}Progress: $completed/${#task_ids[@]} subtasks complete${NC}"
