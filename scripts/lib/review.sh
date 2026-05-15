@@ -213,7 +213,7 @@ review_collect_diff() {
         working-tree) diff_content=$(git diff 2>/dev/null || true) ;;
         [0-9]*)       diff_content=$(gh pr diff "$target" 2>/dev/null || true) ;;
         *)
-            if [[ -f "$target" ]] && [[ -r "$target" ]] && head -n 20 "$target" 2>/dev/null | grep -Eq "^(diff --git|--- |\+\+\+ |@@ )"; then
+            if [[ -f "$target" ]] && [[ -r "$target" ]] && head -n 20 "$target" 2>/dev/null | grep -Ec "^(diff --git|--- |\+\+\+ |@@ )" >/dev/null; then
                 diff_content=$(cat "$target" 2>/dev/null || true)
             else
                 diff_content=$(git diff HEAD -- "$target" 2>/dev/null || true)
