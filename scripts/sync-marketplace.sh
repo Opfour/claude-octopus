@@ -22,6 +22,10 @@ PERSONA_COUNT=$(find "$ROOT_DIR/agents/personas" -name "*.md" -type f 2>/dev/nul
 
 # Get current version from plugin.json (source of truth)
 VERSION=$(python3 -c "import json; print(json.load(open('$PLUGIN_JSON')).get('version', ''))")
+if [[ -z "$VERSION" ]]; then
+    echo "ERROR: version missing in $PLUGIN_JSON" >&2
+    exit 1
+fi
 
 # Read current marketplace description
 CURRENT_DESC=$(python3 -c "
