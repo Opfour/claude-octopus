@@ -621,12 +621,11 @@ Release validation:
 
 - BullshitBench metadata is checked in as a CSV/JSON snapshot and refreshed by `scripts/refresh-benchmarks.sh`; normal runtime does not fetch network data.
 - V1 uses semi-anonymized peer review: role labels are visible, model/provider names are hidden.
-- Deep-mode implementation produces and confirms a concrete plan first, then reuses existing `tangle` behavior; it does not directly launch multiple implementation worktrees from the council phase.
-- MCP exposure is not in v1.
+- Deep-mode implementation produces and confirms a concrete plan first, then records a `tangle` handoff with worktree isolation when Gate A and Gate B are explicitly approved. It does not directly launch multiple implementation agents from the council phase.
+- MCP/OpenClaw exposure is included in v1 through the existing adapter surfaces.
 
 ## Future Work
 
-- Expose `octopus_council` through the existing MCP server after the local command stabilizes.
 - Add true anonymized peer review as an optional mode if it improves quality without losing persona context.
 - Add hosted/job-runner support only if council artifacts become useful outside Claude Code.
 - Add richer benchmark blends beyond BullshitBench, such as code benchmarks for implementation seats and security benchmarks for red-team seats.
